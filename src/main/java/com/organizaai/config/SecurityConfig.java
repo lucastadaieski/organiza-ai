@@ -24,8 +24,9 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .logout(logout -> logout
-                        .logoutUrl("/auth/logout")
-                        .logoutSuccessHandler((req, res, auth) -> res.setStatus(200)) // Requisito 1.10
+                        .logoutUrl("/auth/logout") // URL para deslogar
+                        .invalidateHttpSession(true) // Requisito 1.10: Invalida a sessão
+                        .clearAuthentication(true)   // Limpa os dados de quem estava logado
                 );
 
         return http.build();
