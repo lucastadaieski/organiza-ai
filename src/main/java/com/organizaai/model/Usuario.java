@@ -26,7 +26,7 @@ public class Usuario {
     @Column(nullable = false)
     private Role role;
 
-    // Item 1.5/1.6 - Para o controle do Segundo Fator
+
     private boolean mfaEnabled = false;
     private String mfaSecret;
 
