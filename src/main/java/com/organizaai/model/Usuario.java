@@ -7,6 +7,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -22,6 +23,8 @@ public class Usuario implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private String nome;
+
     @Column(unique = true, nullable = false)
     private String email;
 
@@ -31,6 +34,9 @@ public class Usuario implements UserDetails {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
+
+    private int tentativasLogin = 0;
+    private LocalDateTime bloqueadoAte;
 
 
     private boolean mfaEnabled = false;
@@ -64,4 +70,9 @@ public class Usuario implements UserDetails {
 
     @Override
     public boolean isEnabled() { return true; }
+
+    public boolean isBloqueado() {
+        if (bloqueadoAte == null) return false;
+        return bloqueadoAte.isAfter(LocalDateTime.now());
+    }
 }

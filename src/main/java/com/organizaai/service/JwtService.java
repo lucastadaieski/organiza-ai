@@ -30,4 +30,27 @@ public class JwtService {
                 .getPayload()
                 .getSubject();
     }
+
+    public boolean isTokenValido(String token) {
+        try {
+            // Se o extrairEmail não lançar exceção e não vier nulo, o token é válido
+            String email = extrairEmail(token);
+            return (email != null && !isTokenExpirado(token));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean isTokenExpirado(String token) {
+        return extrairExpiracao(token).before(new Date());
+    }
+
+    private Date extrairExpiracao(String token) {
+        return Jwts.parser()
+                .verifyWith(Keys.hmacShaKeyFor(secretKey.getBytes()))
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getExpiration();
+    }
 }

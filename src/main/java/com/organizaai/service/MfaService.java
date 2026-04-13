@@ -1,9 +1,15 @@
 package com.organizaai.service;
 
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
 import com.warrenstrange.googleauth.GoogleAuthenticator;
 import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
 import com.warrenstrange.googleauth.GoogleAuthenticatorQRGenerator;
 import org.springframework.stereotype.Service;
+
+import java.io.ByteArrayOutputStream;
 
 @Service
 public class MfaService {
@@ -41,6 +47,25 @@ public class MfaService {
             return gAuth.authorize(secret, codeInt);
         } catch (NumberFormatException e) {
             return false;
+        }
+    }
+
+    public byte[] generateQrCodeImage(String secret, String email) {
+        // Gera a URL que o Google Authenticator entende
+        String url = String.format("otpauth://totp/OrganizaAI:%s?secret=%s&issuer=OrganizaAI", email, secret);
+
+        try {
+            QRCodeWriter qrCodeWriter = new QRCodeWriter();
+            // Cria a matriz de bits do QR Code (300x300 pixels)
+            BitMatrix bitMatrix = qrCodeWriter.encode(url, BarcodeFormat.QR_CODE, 300, 300);
+
+            // Converte a matriz para um array de bytes (PNG)
+            ByteArrayOutputStream pngOutputStream = new ByteArrayOutputStream();
+            MatrixToImageWriter.writeToStream(bitMatrix, "PNG", pngOutputStream);
+
+            return pngOutputStream.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao gerar imagem do QR Code", e);
         }
     }
 }

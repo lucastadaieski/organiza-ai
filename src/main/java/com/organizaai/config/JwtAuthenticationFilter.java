@@ -1,5 +1,6 @@
 package com.organizaai.config;
 
+import com.organizaai.repository.TokenBlacklistRepository;
 import com.organizaai.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -20,6 +21,7 @@ import java.util.Collections;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final TokenBlacklistRepository blacklistRepository;
 
     @Override
     protected void doFilterInternal(
@@ -30,38 +32,42 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String path = request.getServletPath();
 
-        if (request.getServletPath().contains("/auth")) {
+        // Rotas de login e registro não precisam de token
+        if (path.contains("/auth")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 1. Pega o cabeçalho "Authorization"
         final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String userEmail;
 
-        // 2. Verifica se o token existe e começa com "Bearer "
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 3. Extrai o token (pula os 7 caracteres de "Bearer ")
-        jwt = authHeader.substring(7);
+        final String jwt = authHeader.substring(7);
 
-        // Aqui vamos extrair o e-mail usando o JwtService que você já criou
-        userEmail = jwtService.extrairEmail(jwt);
-
-        // 4. Se o e-mail for válido e o usuário não estiver autenticado ainda
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            // Se o token for válido, "avisamos" o Spring que o usuário está OK
-            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                    userEmail, null, Collections.emptyList()
-            );
-            SecurityContextHolder.getContext().setAuthentication(authToken);
+        // 1. Checa a Blacklist (Logout)
+        if (blacklistRepository.existsByToken(jwt)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setCharacterEncoding("UTF-8");
+            response.getWriter().write("Sessão encerrada. Faça login novamente.");
+            return;
         }
 
-        // 5. Deixa a requisição seguir viagem
+        // 2. Valida o Token e Autentica
+        if (jwtService.isTokenValido(jwt)) {
+            String userEmail = jwtService.extrairEmail(jwt);
+
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                        userEmail, null, Collections.emptyList()
+                );
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
+        }
+
         filterChain.doFilter(request, response);
     }
 }
+
