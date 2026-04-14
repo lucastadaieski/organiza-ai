@@ -1,45 +1,145 @@
-#  OrganizaAí - Gestão Segura de Eventos
+# OrganizaAí - Gestão de Eventos
+
+---
+
+![organiza-ai Logo](src/main/resources/static/images/banner.png)
+
+<!-- Badges -->
+<div align="center">
+
+[![University: UMC](https://img.shields.io/badge/University-UMC-0D47A1?style=for-the-badge)](https://www.umc.br/)
+![Java 21](https://img.shields.io/badge/Java-21-orange?style=for-the-badge&logo=openjdk)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-brightgreen?style=for-the-badge&logo=spring-boot)
+![PostgreSQL](https://img.shields.io/badge/MySQL-4169E1?style=for-the-badge&logo=mysql&logoColor=white)
+
+</div>
+
+---
 
 ##  Sobre o Projeto
-O **OrganizaAí** é uma API desenvolvida em Java 21 para a gestão de eventos e insumos, focada em segurança desde a concepção (*Security by Design*).
+O OrganizaAí é uma solução robusta em formato de API RESTful, desenvolvida com o que há de mais moderno no ecossistema Java 21. O projeto nasceu para sanar uma dor comum no convívio social: a fricção logística na organização de eventos em grupo.
+
+Desde a indefinição de datas que gera conversas infinitas em aplicativos de mensagens até a dificuldade matemática de calcular insumos e custos por pessoa, o OrganizaAí centraliza e automatiza todo o ciclo de vida de um evento.
 
 ---
 
-##  Relatório de Conformidade (PSI)
-Esta seção detalha como cada requisito de segurança solicitado foi implementado.
+## Funcionalidades do Projeto
 
-### 1. Autenticação e Gestão de Credenciais
-| ID   | Requisito                    | Status | Técnica Utilizada                                                                                                                                    |
-|:-----|:-----------------------------|:------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1.01 | Hash Seguro                  |   ✅    | BCrypt (Algoritmo de via única)                                                                                                                      |
-| 1.02 | Custo do Hash                |   ✅    | Fator 12 (Justificado abaixo)                                                                                                                        |
-| 1.03 | Salt Único                   |   ✅    | Gerado nativamente pelo BCrypt por usuário                                                                                                           |
-| 1.04 | Armazenamento de Hash + Salt |   ✅    | O BCrypt gera uma string única que já inclui o algoritmo, o custo e o salt. Isso é armazenado em uma coluna password do tipo VARCHAR(255)                                             |
-| 1.05 | 2FA                          |   ✅    | Implementação via TOTP (Google Authenticator)                                                                                                        |
-| 1.06 | Validação do 2FA             |   ✅    | Implementação de um OncePerRequestFilter que intercepta requisições e verifica se o usuário completou o desafio do segundo fator antes de liberar o acesso.                                   |
-| 1.07 | Fluxo Documentado            |   ✅    | Documentado via Diagrama de Sequência (Mermaid) detalhando o "Handshake" de segurança entre Cliente e Servidor.                                              |
-| 1.08 | Evidências Funcionais        |   ✅    | Disponibilizadas na pasta /docs/evidencias do projeto, incluindo capturas de tela do Postman e logs detalhados do console.                                                        |
-| 1.09 | Tempo de Expiração           |   ✅    | Utilização de Tokens JWT (JSON Web Token) com claim exp definida para 15 minutos, minimizando a janela de oportunidade para sequestro de sessão.                                                                 |
-| 1.10 | Invalidação no Logout        |   ✅    | Implementação de Token Blacklisting. No momento do logout, o token é adicionado a uma lista de bloqueio até que expire naturalmente.                                                                                                                                             |
-| 1.11 | Proteção contra Brute Force  |  ✅    | Uso da biblioteca Bucket4j. IPs que excederem 5 tentativas de login por minuto são temporariamente bloqueados (Status 429).                                                                                                                                                     |
-| 1.12 | Justificativas Técnicas      |  ✅    | Seções detalhadas no README explicando a escolha do BCrypt (resistência a GPUs) e JWT (escalabilidade stateless).                                                                                                                                                  |
+📅 **Gestão de Eventos e Datas**
 
+- Criação de Eventos: Permite criar eventos personalizados (Churrascos, Reuniões, Festas).
 
-> **Justificativa Técnica (1.2):** O fator de custo 12 foi escolhido para equilibrar o tempo de processamento no servidor (aprox. 250ms por hash) com a resistência a ataques de força bruta em 2026.
+- Votação de Datas: O organizador propõe múltiplas datas e os participantes votam nas que têm disponibilidade (estilo Doodle).
 
-### 2. Recuperação de Senha
-*Em desenvolvimento...*
+- Fechamento Automático: O sistema identifica a data com maior adesão para confirmar o evento.
+
+🍖 **Gerenciamento de Insumos**
+
+- Cálculo por Pessoa: Cálculo automático de quantidades (ex: gramas de carne, litros de bebida) com base no número de confirmados.
+
+- Divisão de Custos: Gestão financeira para saber quanto cada participante deve contribuir.
+
+- Lista de Compras: Geração de lista de itens necessários para a realização do evento.
+
+🔐 **Segurança e Controle (Security by Design)**
+
+- Autenticação JWT: Acesso seguro via Tokens para garantir que apenas usuários autorizados interajam com os eventos.
+
+- Níveis de Acesso: Diferenciação entre organizadores (quem criou o evento) e participantes.
+
+- Proteção de Dados: Implementação de filtros de segurança para evitar acessos indevidos a informações privadas de grupos.
 
 ---
 
-## 🚀 Como Executar
+## Estrutura do Repositório
+```text
+organiza-ai/
+├── src/
+│   ├── main/
+│   │   ├── java/com/organizaai/
+│   │   │   ├── config/          # Configurações (SecurityConfig, JWT, OpenAPI)
+│   │   │   ├── controller/      # Endpoints da API (REST)
+│   │   │   ├── enums/           # Enumerações (ex: role do usuário)
+│   │   │   ├── model/           # Entidades do Banco de Dados (JPA)
+│   │   │   ├── repository/      # Interfaces de acesso ao Banco (Spring Data JPA)
+│   │   │   ├── service/         # Regras de negócio e lógica do sistema
+│   │   │   └── OrganizaAiApplication.java
+│   │   └── resources/
+│   │       ├── static/images/   # Assets, logos e imagens do README
+│   │       ├── templates/       # Templates
+│   │       └── application.properties
+│   └── test/                    #
+├── .env.example                 # Exemplo de variáveis de ambiente
+├── .gitignore                   # Arquivos ignorados pelo Git (target, .env)
+├── pom.xml                      # Gerenciador de dependências Maven
+└── readme.md                    # Documentação principal do projeto
+```
+---
+## Arquitetura do Sistema
+
+Abaixo está o diagrama de classes atualizado, baseado na modelação do sistema OrganizaAí:
+
+```mermaid
+
+classDiagram
+    class Usuario {
+        +Long id
+        +String email
+        +String password
+        +Role role
+    }
+
+
+    class Evento {
+        +Long id
+        +String nome
+        +String descricao
+        +StatusEvento status
+        +LocalDateTime dataConfirmada
+        +calcularCustoTotal() BigDecimal
+        +fecharVotacao() void
+    }
+
+    class Participante {
+        +Long id
+        +String nome
+        +String email
+        +Boolean confirmado
+        +Boolean consomeAlcool
+    }
+
+    class ItemConsumo {
+        +Long id
+        +String nome
+        +Double taxaPorPessoa
+        +BigDecimal precoUnitario
+        +TipoItem tipo
+    }
+
+    class SugestaoData {
+        +Long id
+        +LocalDateTime dataHora
+        +Integer votos
+    }
+
+    Usuario "1" -- "N" Evento : organiza
+    Evento "1" -- "N" Participante : possui
+    Evento "1" -- "N" ItemConsumo : contém
+    Evento "1" -- "N" SugestaoData : oferece
+```
+
+Notas sobre a Modelação:
+
+Cálculo de Insumos: A lógica de consomeAlcool no Participante permite que o sistema filtre quem entra no cálculo de bebidas alcoólicas vs. refrigerantes/água.
+
+Financeiro: O precoUnitario no ItemConsumo possibilita o método calcularCustoTotal() no Evento.
+
+Fluxo de Decisão: O SugestaoData armazena os votos antes de o status do evento mudar e a dataConfirmada ser preenchida.
+
+---
+## Como Executar
 1. Clone o repositório.
 2. Configure o seu `.env` (veja o `.env.example`).
 3. Execute o comando `./mvnw spring-boot:run`.
 
 ---
-
-## 💻 Decisões de Arquitetura (MVP)
-* **Java 21 (LTS):** Uso de Virtual Threads para melhor escalabilidade.
-* **Spring Boot 3.x:** Base para a API REST.
-* **PostgreSQL:** Persistência de dados com criptografia AES em repouso.
