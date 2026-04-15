@@ -32,8 +32,19 @@ public class MfaService {
     }
 
     // 3. Valida se o código de 6 dígitos que o usuário digitou bate com o segredo dele
-    public boolean validarCodigo(String secret, int codigo) {
-        return gAuth.authorize(secret, codigo);
+    public boolean validarCodigo(String secret, String codigo) {
+        try {
+            // Converte a String recebida do front-end (ex: "045812") para um número inteiro.
+            int codigoInt = Integer.parseInt(codigo);
+
+            // Passa o inteiro para a biblioteca validar.
+            return gAuth.authorize(secret, codigoInt);
+
+        } catch (NumberFormatException e) {
+            // Se o usuário enviar algo que não seja número (ex: "abc12"),
+            // o parse falha, e nós retornamos false graciosamente em vez de quebrar o servidor.
+            return false;
+        }
     }
 
     public boolean verificarCodigo(String secret, String code) {
