@@ -1,9 +1,9 @@
-package com.organizaai.model;
+package com.organizaai.dto;
 
 import com.organizaai.enums.TipoEvento;
 import java.time.LocalDateTime;
 
-public record EventoResponseDTO(
+public record EventoResponse(
         Long id,
         String nome,
         String descricao,

@@ -1,4 +1,4 @@
-package com.organizaai.model;
+package com.organizaai.dto;
 
 import com.organizaai.enums.TipoEvento;
 import jakarta.validation.constraints.Future;
@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
-public record EventoRequestDTO(
+public record EventoRequest(
         @NotBlank(message = "O nome é obrigatório")
         String nome,
 
