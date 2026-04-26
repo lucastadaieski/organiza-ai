@@ -1,7 +1,7 @@
 package com.organizaai.service;
 
 import com.organizaai.enums.Role;
-import com.organizaai.model.RegisterRequest;
+import com.organizaai.dto.RegisterRequest;
 import com.organizaai.model.Usuario;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
