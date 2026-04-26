@@ -56,4 +56,9 @@ public class EventoService {
         eventoRepository.delete(evento);
     }
 
+    public Evento buscarPorToken(String token) {
+        return eventoRepository.findByInviteToken(token)
+                .orElseThrow(() -> new RuntimeException("Convite inválido ou expirado"));
+    }
+
 }

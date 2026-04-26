@@ -1,8 +1,9 @@
 package com.organizaai.controller;
 
+import com.organizaai.dto.EventoPublico;
 import com.organizaai.model.Evento;
-import com.organizaai.model.EventoRequestDTO;
-import com.organizaai.model.EventoResponseDTO;
+import com.organizaai.dto.EventoRequest;
+import com.organizaai.dto.EventoResponse;
 import com.organizaai.model.Usuario;
 import com.organizaai.service.EventoService;
 import com.organizaai.service.UsuarioService;
@@ -26,7 +27,7 @@ public class EventoController {
     private final UsuarioService usuarioService;
 
     @PostMapping
-    public ResponseEntity<EventoResponseDTO> criar(@RequestBody @Valid EventoRequestDTO dto, Principal principal) {
+    public ResponseEntity<EventoResponse> criar(@RequestBody @Valid EventoRequest dto, Principal principal) {
         Usuario logado = usuarioService.buscarPorEmail(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
@@ -42,7 +43,7 @@ public class EventoController {
         Evento salvo = eventoService.salvar(evento);
 
         // Transformando para o DTO de resposta
-        EventoResponseDTO response = new EventoResponseDTO(
+        EventoResponse response = new EventoResponse(
                 salvo.getId(),
                 salvo.getNome(),
                 salvo.getDescricao(),
@@ -64,9 +65,9 @@ public class EventoController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<EventoResponseDTO> atualizar(@PathVariable Long id,
-                                                       @RequestBody @Valid EventoRequestDTO dto,
-                                                       Principal principal) {
+    public ResponseEntity<EventoResponse> atualizar(@PathVariable Long id,
+                                                    @RequestBody @Valid EventoRequest dto,
+                                                    Principal principal) {
         Usuario logado = usuarioService.buscarPorEmail(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
@@ -93,8 +94,8 @@ public class EventoController {
     }
 
     // Método auxiliar para evitar repetição de código (Refatoração)
-    private EventoResponseDTO mapearParaResponseDTO(Evento evento) {
-        return new EventoResponseDTO(
+    private EventoResponse mapearParaResponseDTO(Evento evento) {
+        return new EventoResponse(
                 evento.getId(),
                 evento.getNome(),
                 evento.getDescricao(),
@@ -103,5 +104,18 @@ public class EventoController {
                 evento.getTipo(),
                 evento.getOrganizador().getNome()
         );
+    }
+
+    @GetMapping("/publico/{token}")
+    public ResponseEntity<EventoPublico> buscarDadosPublicos(@PathVariable String token) {
+        // Usamos o Service em vez do Repository diretamente
+        Evento evento = eventoService.buscarPorToken(token);
+
+        return ResponseEntity.ok(new EventoPublico(
+                evento.getNome(),
+                evento.getOrganizador().getNome(),
+                evento.getDataHora(),
+                evento.getLocalizacao()
+        ));
     }
 }
