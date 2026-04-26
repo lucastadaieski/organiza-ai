@@ -3,15 +3,12 @@ package com.organizaai.controller;
 import com.organizaai.model.LoginRequest;
 import com.organizaai.model.RegisterRequest;
 import com.organizaai.model.Usuario;
-import com.organizaai.service.AuthService;
-import com.organizaai.service.JwtService;
-import com.organizaai.service.MfaService;
-import com.organizaai.service.UsuarioService;
-import com.organizaai.service.TokenBlacklistService;
+import com.organizaai.service.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -35,6 +32,7 @@ public class AuthController {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final TokenBlacklistService tokenBlacklistService;
+    private final PasswordResetService passwordResetService;
 
     // --- ETAPA DE CADASTRO ---
 
@@ -114,5 +112,28 @@ public class AuthController {
         Date dataExpiracao = jwtService.extrairDataExpiracao(token);
         tokenBlacklistService.invalidarToken(token, dataExpiracao);
         return ResponseEntity.ok("Logout realizado com sucesso!");
+    }
+
+    @Operation(summary = "07. Esqueci Senha", description = "Gera um token de recuperação e envia para o e-mail informado.")
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@RequestParam String email) {
+        try {
+            passwordResetService.gerarTokenRecuperacao(email);
+            return ResponseEntity.ok("Se o e-mail existir em nossa base, você receberá um link de recuperação.");
+        } catch (Exception e) {
+            log.error("Erro ao solicitar recuperação de senha para {}: {}", email, e.getMessage());
+            return ResponseEntity.badRequest().body("Erro ao processar solicitação.");
+        }
+    }
+
+    @Operation(summary = "08. Redefinir Senha", description = "Utiliza o token recebido no e-mail para cadastrar uma nova senha.")
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@RequestParam String token, @RequestParam String novaSenha) {
+        try {
+            passwordResetService.redefinirSenha(token, novaSenha);
+            return ResponseEntity.ok("Senha alterada com sucesso!");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }
