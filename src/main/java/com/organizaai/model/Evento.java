@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -23,19 +24,19 @@ public class Evento {
 
     private String descricao;
 
-    @Column(nullable = false)
-    private LocalDateTime dataHora;
+    @Column(name ="data_evento")
+    private LocalDate dataEvento;
 
     private String localizacao;
 
     @Enumerated(EnumType.STRING)
-    private TipoEvento tipo; // Aqui entra o seu Enum
+    private TipoEvento tipo;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario organizador;
 
-    // Na sua classe Evento.java
+    //gera o id do link do convite
     @Column(unique = true)
     private String inviteToken = UUID.randomUUID().toString().substring(0, 8); // Token curto de 8 caracteres
 }

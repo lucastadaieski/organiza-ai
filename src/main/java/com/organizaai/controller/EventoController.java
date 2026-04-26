@@ -31,29 +31,20 @@ public class EventoController {
         Usuario logado = usuarioService.buscarPorEmail(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
-        // Mapeamento manual (ou pode usar MapStruct no futuro)
+        // Mapeamento de Entrada (DTO -> Entity)
         Evento evento = new Evento();
         evento.setNome(dto.nome());
         evento.setDescricao(dto.descricao());
-        evento.setDataHora(dto.dataHora());
+        evento.setDataEvento(dto.dataHora());
         evento.setLocalizacao(dto.localizacao());
         evento.setTipo(dto.tipo());
         evento.setOrganizador(logado);
 
         Evento salvo = eventoService.salvar(evento);
 
-        // Transformando para o DTO de resposta
-        EventoResponse response = new EventoResponse(
-                salvo.getId(),
-                salvo.getNome(),
-                salvo.getDescricao(),
-                salvo.getDataHora(),
-                salvo.getLocalizacao(),
-                salvo.getTipo(),
-                logado.getNome()
-        );
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        // Mapeamento de Saída (Entity -> DTO) usando o método auxiliar
+        // Passamos o 'salvo' para garantir que pegamos o ID e o Token gerados pelo banco
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapearParaResponseDTO(salvo));
     }
 
     @GetMapping
@@ -75,7 +66,7 @@ public class EventoController {
         Evento dadosAtualizados = new Evento();
         dadosAtualizados.setNome(dto.nome());
         dadosAtualizados.setDescricao(dto.descricao());
-        dadosAtualizados.setDataHora(dto.dataHora());
+        dadosAtualizados.setDataEvento(dto.dataHora());
         dadosAtualizados.setLocalizacao(dto.localizacao());
         dadosAtualizados.setTipo(dto.tipo());
 
@@ -93,19 +84,6 @@ public class EventoController {
         return ResponseEntity.noContent().build(); // 204 No Content é o padrão para delete com sucesso
     }
 
-    // Método auxiliar para evitar repetição de código (Refatoração)
-    private EventoResponse mapearParaResponseDTO(Evento evento) {
-        return new EventoResponse(
-                evento.getId(),
-                evento.getNome(),
-                evento.getDescricao(),
-                evento.getDataHora(),
-                evento.getLocalizacao(),
-                evento.getTipo(),
-                evento.getOrganizador().getNome()
-        );
-    }
-
     @GetMapping("/publico/{token}")
     public ResponseEntity<EventoPublico> buscarDadosPublicos(@PathVariable String token) {
         // Usamos o Service em vez do Repository diretamente
@@ -114,8 +92,21 @@ public class EventoController {
         return ResponseEntity.ok(new EventoPublico(
                 evento.getNome(),
                 evento.getOrganizador().getNome(),
-                evento.getDataHora(),
+                evento.getDataEvento(),
                 evento.getLocalizacao()
         ));
+    }
+
+    private EventoResponse mapearParaResponseDTO(Evento evento) {
+        return new EventoResponse(
+                evento.getId(),
+                evento.getNome(),
+                evento.getDescricao(),
+                evento.getDataEvento(),
+                evento.getLocalizacao(),
+                evento.getTipo(),
+                evento.getOrganizador().getNome(),
+                evento.getInviteToken()
+        );
     }
 }

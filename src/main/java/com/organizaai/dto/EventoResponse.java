@@ -1,14 +1,15 @@
 package com.organizaai.dto;
 
 import com.organizaai.enums.TipoEvento;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 public record EventoResponse(
         Long id,
         String nome,
         String descricao,
-        LocalDateTime dataHora,
+        LocalDate dataEvento,
         String localizacao,
         TipoEvento tipo,
-        String nomeOrganizador
+        String nomeOrganizador,
+        String inviteToken
 ) {}

@@ -37,7 +37,7 @@ public class EventoService {
         // Atualizando os campos
         eventoExistente.setNome(eventoAtualizado.getNome());
         eventoExistente.setDescricao(eventoAtualizado.getDescricao());
-        eventoExistente.setDataHora(eventoAtualizado.getDataHora());
+        eventoExistente.setDataEvento(eventoAtualizado.getDataEvento());
         eventoExistente.setLocalizacao(eventoAtualizado.getLocalizacao());
         eventoExistente.setTipo(eventoAtualizado.getTipo());
 
