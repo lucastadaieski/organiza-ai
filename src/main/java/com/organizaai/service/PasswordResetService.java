@@ -5,7 +5,7 @@ import com.organizaai.model.Usuario;
 import com.organizaai.repository.PasswordResetTokenRepository;
 import com.organizaai.repository.UsuarioRepository;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -13,29 +13,33 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class PasswordResetService {
 
-    @Autowired
-    private
-    PasswordResetTokenRepository tokenRepository;
+    private final PasswordResetTokenRepository tokenRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService; // Injetando o nosso carteiro
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    // 1. Gera o token e "enviaria" o e-mail
+    // 1. Gera o token e envia o e-mail real
+    @Transactional // Precisa dessa anotação para fazer o delete e o insert na mesma transação
     public void gerarTokenRecuperacao(String email) {
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
+        // A MÁGICA ESTÁ AQUI: Limpa qualquer token antigo que ficou preso no banco
+        tokenRepository.findByUsuario(usuario).ifPresent(tokenAntigo -> {
+            tokenRepository.delete(tokenAntigo);
+            tokenRepository.flush(); // Força o banco a apagar imediatamente antes de seguir
+        });
+
+        // Agora sim, gera e salva o novo em paz
         String token = UUID.randomUUID().toString();
         PasswordResetToken resetToken = new PasswordResetToken(token, usuario);
         tokenRepository.save(resetToken);
 
-        // Aqui entraria o EmailService.enviar(email, token);
-        System.out.println("Link de recuperação: http://localhost:8080/auth/reset-password?token=" + token);
+        // Dispara o e-mail
+        emailService.enviarEmailRecuperacao(usuario.getEmail(), token);
     }
 
     // 2. Valida o token e troca a senha

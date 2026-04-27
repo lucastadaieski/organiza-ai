@@ -4,6 +4,7 @@ import com.organizaai.enums.Role;
 import com.organizaai.dto.RegisterRequest;
 import com.organizaai.model.Usuario;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -23,43 +24,73 @@ public class AuthService {
     private final MfaService mfaService;
     private final JwtService jwtService;
 
-    //Registra um novo usuário no sistema.
+    // --- 1. O NASCIMENTO (Seu método original que está ótimo) ---
     public void registrar(RegisterRequest request) {
         Usuario novoUsuario = new Usuario();
         novoUsuario.setNome(request.nome());
         novoUsuario.setEmail(request.email());
+        // Senha criptografada: pilar 01 da segurança
         novoUsuario.setPassword(passwordEncoder.encode(request.senha()));
         novoUsuario.setRole(Role.USER);
         novoUsuario.setAtivo(true);
 
-        // Gera o segredo único do Google Authenticator para o usuário
+        // Gera o segredo, mas deixa DESATIVADO até o primeiro login
         String secret = mfaService.gerarSecret();
-
         novoUsuario.setMfaSecret(secret);
         novoUsuario.setMfaEnabled(false);
 
-        // Salva usando o UsuarioService
         usuarioService.atualizarUsuario(novoUsuario);
     }
 
-    //Valida o código MFA (etapa 2 do login) e gera o JWT final.
+    // --- 2. O PRIMEIRO PASSO DO LOGIN (Validação de Senha) ---
+    public Map<String, Object> autenticarSenha(String email, String senhaDigitada) {
+        Usuario user = usuarioService.buscarPorEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+
+        // Checa se a conta não está trancada por excesso de tentativas
+        if (user.getBloqueadoAte() != null && user.getBloqueadoAte().isAfter(LocalDateTime.now())) {
+            throw new RuntimeException("Conta bloqueada temporariamente.");
+        }
+
+        // BCrypt comparando a senha digitada com a do banco
+        if (!passwordEncoder.matches(senhaDigitada, user.getPassword())) {
+            processarFalhaLogin(email);
+            throw new BadCredentialsException("Senha incorreta.");
+        }
+
+        resetarTentativas(user);
+
+        // Retornamos o status para o Front-end saber para onde mandar o usuário
+        return Map.of(
+                "mfaAtivo", user.isMfaEnabled(),
+                "status", user.isMfaEnabled() ? "MFA_VERIFY" : "MFA_SETUP"
+        );
+    }
+
+    // --- 3. A CHAVE FINAL (Validação do Código + Entrega do JWT) ---
     public Map<String, Object> verificarLoginMfa(String email, String code) {
         Usuario user = usuarioService.buscarPorEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado"));
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
-        // Valida o código usando a String que chega do Controller
         boolean isCodeValid = mfaService.validarCodigo(user.getMfaSecret(), code);
 
         if (!isCodeValid) {
-            throw new RuntimeException("Código MFA inválido ou expirado.");
+            throw new RuntimeException("Código MFA inválido.");
         }
 
-        // Se passou, gera o Token com validade de 15 minutos
+        // Se o usuário está vindo da tela de SETUP, agora a gente ativa o MFA de vez
+        if (!user.isMfaEnabled()) {
+            user.setMfaEnabled(true);
+            usuarioService.atualizarUsuario(user);
+        }
+
+        // SÓ AQUI o Token é gerado!
         String token = jwtService.gerarToken(user.getEmail());
 
         return Map.of(
                 "token", token,
-                "message", "Login realizado com sucesso!"
+                "nome", user.getNome(),
+                "message", "Acesso liberado!"
         );
     }
 

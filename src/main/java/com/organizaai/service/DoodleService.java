@@ -116,7 +116,7 @@ public class DoodleService {
         }).toList();
 
         // Se a data do evento for null, a votação está aberta.
-        String status = (evento.getDataEvento() == null) ? "ABERTO" : "FECHADO";
+        String status = (evento.getDataEscolhida() == null) ? "ABERTO" : "FECHADO";
 
         return new DoodleResponse(evento.getId(), status, opcoesDTO);
     }
@@ -141,7 +141,7 @@ public class DoodleService {
         }
 
         // 5. Bate o martelo: Define a data no evento principal
-        evento.setDataEvento(sugestaoVencedora.getDataSugestao());
+        evento.setDataEscolhida(sugestaoVencedora.getDataSugestao());
         eventoRepository.save(evento);
     }
 }

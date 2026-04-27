@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OrganizaAI - Configurar Segurança</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 flex items-center justify-center min-h-screen p-4">
+
+<div class="bg-white p-8 rounded-2xl shadow-xl border border-slate-100 max-w-md w-full text-center">
+  <h2 class="text-2xl font-black text-indigo-600 mb-2">Segurança Máxima</h2>
+  <p class="text-slate-500 mb-6 text-sm">Escaneie o QR Code abaixo com o seu app de autenticação (Google Authenticator ou Authy).</p>
+
+  <div class="flex justify-center mb-6 p-2 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl">
+    <img id="qrcode" class="w-48 h-48" src="" alt="Carregando QR Code...">
+  </div>
+
+  <input type="text" id="mfa-code" placeholder="000000" maxlength="6"
+         class="w-full text-center tracking-[0.5em] font-mono text-2xl py-3 px-4 rounded-xl border border-slate-200 mb-4 focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+
+  <button onclick="ativarMFA()" id="btn-ativar"
+          class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-indigo-700 transition-all active:scale-95">
+    Ativar e Continuar
+  </button>
+
+  <div id="msg-erro" class="hidden mt-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg font-medium"></div>
+</div>
+
+<script>
+  // Pega o email da URL (ex: ?email=seu@email.com)
+  const params = new URLSearchParams(window.location.search);
+  const email = params.get('email');
+
+  // Seta a imagem do QR Code
+  if (email) {
+    document.getElementById('qrcode').src = `/auth/mfa/setup?email=${email}`;
+  } else {
+    document.getElementById('msg-erro').innerText = "Erro: E-mail não encontrado na URL.";
+    document.getElementById('msg-erro').classList.remove('hidden');
+  }
+
+  async function ativarMFA() {
+    const code = document.getElementById('mfa-code').value;
+    const btn = document.getElementById('btn-ativar');
+    const msgErro = document.getElementById('msg-erro');
+
+    btn.innerText = "Verificando...";
+    msgErro.classList.add('hidden');
+
+    try {
+      // Post para o endpoint de verificação usando query params, como o seu Java espera
+      const resp = await fetch(`/auth/mfa/verify?email=${email}&code=${code}`, {
+        method: 'POST'
+      });
+
+      if (resp.ok) {
+        alert("MFA Ativado com sucesso! Você será redirecionado para o login.");
+        window.location.href = "/login";
+      } else {
+        const textoErro = await resp.text();
+        msgErro.innerText = textoErro || "Código inválido!";
+        msgErro.classList.remove('hidden');
+        btn.innerText = "Ativar e Continuar";
+      }
+    } catch (error) {
+      msgErro.innerText = "Erro ao conectar com o servidor.";
+      msgErro.classList.remove('hidden');
+      btn.innerText = "Ativar e Continuar";
+    }
+  }
+</script>
+</body>
+</html>

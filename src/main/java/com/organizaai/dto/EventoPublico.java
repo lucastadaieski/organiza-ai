@@ -1,8 +1,11 @@
 package com.organizaai.dto;
 
+import java.time.LocalDate;
+import java.util.List;
+
 public record EventoPublico(
         String nome,
         String nomeOrganizador,
-        java.time.LocalDate dataEvento,
+        List<LocalDate> datas,
         String localizacao
 ) {}

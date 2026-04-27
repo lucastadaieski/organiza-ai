@@ -28,7 +28,7 @@ public class Participacao {
     @Enumerated(EnumType.STRING)
     private StatusParticipacao status = StatusParticipacao.PENDENTE;
 
-    private String contribuicao; // Ex: "2kg de carne", "Refrigerante", "R$ 50,00"
+    private String contribuicao;
 
     private LocalDateTime dataConvite = LocalDateTime.now();
 }

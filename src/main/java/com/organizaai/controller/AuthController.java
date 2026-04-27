@@ -17,6 +17,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
@@ -76,7 +77,7 @@ public class AuthController {
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
         if (usuario.isBloqueado()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Conta bloqueada temporariamente.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("erro", "Conta bloqueada temporariamente."));
         }
 
         try {
@@ -84,10 +85,16 @@ public class AuthController {
                     new UsernamePasswordAuthenticationToken(request.email(), request.password())
             );
             authService.resetarTentativas(usuario);
-            return ResponseEntity.ok("Senha correta. Agora utilize o endpoint /login/verify com seu código do celular.");
+
+            // MUDANÇA AQUI: Retornamos um JSON com o status do MFA
+            return ResponseEntity.ok(Map.of(
+                    "proximoPasso", "MFA_VERIFY",
+                    "mfaAtivo", usuario.isMfaEnabled(),
+                    "mensagem", "Senha correta."
+            ));
         } catch (BadCredentialsException e) {
             authService.processarFalhaLogin(request.email());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Senha incorreta.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("erro", "Senha incorreta."));
         }
     }
 

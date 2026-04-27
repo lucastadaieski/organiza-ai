@@ -1,24 +1,21 @@
 package com.organizaai.dto;
 
-import com.organizaai.enums.TipoEvento;
-import jakarta.validation.constraints.Future;
+
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotEmpty;
 import java.time.LocalDate;
+import java.util.List;
 
 public record EventoRequest(
-        @NotBlank(message = "O nome é obrigatório")
-        String nome,
+        @NotBlank(message = "O título é obrigatório")
+        String titulo,
 
         String descricao,
 
-        @NotNull(message = "A data e hora são obrigatórias")
-        @Future(message = "A data do evento deve ser no futuro")
-        LocalDate dataHora,
+        @NotEmpty(message = "Pelo menos uma data deve ser sugerida")
+        List<LocalDate> datas,
 
-        @NotBlank(message = "A localização é obrigatória")
-        String localizacao,
+        String localizacao, // Pode ser opcional agora
 
-        @NotNull(message = "O tipo de evento é obrigatório")
-        TipoEvento tipo
+        String tipo // Pode ser opcional agora
 ) {}

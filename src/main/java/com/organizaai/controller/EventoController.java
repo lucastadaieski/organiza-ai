@@ -4,6 +4,8 @@ import com.organizaai.dto.EventoPublico;
 import com.organizaai.model.Evento;
 import com.organizaai.dto.EventoRequest;
 import com.organizaai.dto.EventoResponse;
+import com.organizaai.enums.TipoEvento;
+import com.organizaai.model.SugestaoData;
 import com.organizaai.model.Usuario;
 import com.organizaai.service.EventoService;
 import com.organizaai.service.UsuarioService;
@@ -15,7 +17,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/eventos")
@@ -31,28 +36,34 @@ public class EventoController {
         Usuario logado = usuarioService.buscarPorEmail(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
-        // Mapeamento de Entrada (DTO -> Entity)
         Evento evento = new Evento();
-        evento.setNome(dto.nome());
+        evento.setNome(dto.titulo());
         evento.setDescricao(dto.descricao());
-        evento.setDataEvento(dto.dataHora());
         evento.setLocalizacao(dto.localizacao());
-        evento.setTipo(dto.tipo());
         evento.setOrganizador(logado);
 
-        Evento salvo = eventoService.salvar(evento);
+        // Converte a String do DTO para o Enum do Java (ex: "FESTA" -> TipoEvento.FESTA)
+        if (dto.tipo() != null && !dto.tipo().isBlank()) {
+            evento.setTipo(TipoEvento.valueOf(dto.tipo().toUpperCase()));
+        }
 
-        // Mapeamento de Saída (Entity -> DTO) usando o método auxiliar
-        // Passamos o 'salvo' para garantir que pegamos o ID e o Token gerados pelo banco
+        Evento salvo = eventoService.criarEventoComOpcoes(evento, dto.datas());
+
         return ResponseEntity.status(HttpStatus.CREATED).body(mapearParaResponseDTO(salvo));
     }
 
-    @GetMapping
-    public ResponseEntity<List<Evento>> listarMeusEventos(Principal principal) {
+    @GetMapping("/meus")
+    public ResponseEntity<List<EventoResponse>> listarMeusEventos(Principal principal) {
         Usuario logado = usuarioService.buscarPorEmail(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
-        return ResponseEntity.ok(eventoService.listarPorOrganizador(logado.getId()));
+        // Mapeia a lista de Entidades para uma lista de DTOs para não expor a senha do organizador
+        List<EventoResponse> respostas = eventoService.listarPorOrganizador(logado.getId())
+                .stream()
+                .map(this::mapearParaResponseDTO)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(respostas);
     }
 
     @PutMapping("/{id}")
@@ -62,13 +73,25 @@ public class EventoController {
         Usuario logado = usuarioService.buscarPorEmail(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
-        // Convertendo DTO para Entity para processar no Service
         Evento dadosAtualizados = new Evento();
-        dadosAtualizados.setNome(dto.nome());
+        dadosAtualizados.setNome(dto.titulo());
         dadosAtualizados.setDescricao(dto.descricao());
-        dadosAtualizados.setDataEvento(dto.dataHora());
         dadosAtualizados.setLocalizacao(dto.localizacao());
-        dadosAtualizados.setTipo(dto.tipo());
+
+        if (dto.tipo() != null && !dto.tipo().isBlank()) {
+            dadosAtualizados.setTipo(TipoEvento.valueOf(dto.tipo().toUpperCase()));
+        }
+
+        // Transforma a lista de LocalDate do DTO em lista de DataOpcao para o Service processar
+        List<SugestaoData> novasOpcoes = new ArrayList<>();
+        if (dto.datas() != null) {
+            for (LocalDate data : dto.datas()) {
+                SugestaoData op = new SugestaoData();
+                op.setDataSugestao(data);
+                novasOpcoes.add(op);
+            }
+        }
+        dadosAtualizados.setOpcoesData(novasOpcoes);
 
         Evento atualizado = eventoService.atualizar(id, dadosAtualizados, logado);
 
@@ -81,28 +104,37 @@ public class EventoController {
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
         eventoService.deletar(id, logado);
-        return ResponseEntity.noContent().build(); // 204 No Content é o padrão para delete com sucesso
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/publico/{token}")
     public ResponseEntity<EventoPublico> buscarDadosPublicos(@PathVariable String token) {
-        // Usamos o Service em vez do Repository diretamente
         Evento evento = eventoService.buscarPorToken(token);
+
+        // Puxa as datas de dentro dos objetos DataOpcao
+        List<LocalDate> datas = evento.getOpcoesData().stream()
+                .map(SugestaoData::getDataSugestao)
+                .collect(Collectors.toList());
 
         return ResponseEntity.ok(new EventoPublico(
                 evento.getNome(),
                 evento.getOrganizador().getNome(),
-                evento.getDataEvento(),
+                datas,
                 evento.getLocalizacao()
         ));
     }
 
     private EventoResponse mapearParaResponseDTO(Evento evento) {
+        // Puxa as datas de dentro dos objetos DataOpcao
+        List<LocalDate> datas = evento.getOpcoesData().stream()
+                .map(SugestaoData::getDataSugestao)
+                .collect(Collectors.toList());
+
         return new EventoResponse(
                 evento.getId(),
                 evento.getNome(),
                 evento.getDescricao(),
-                evento.getDataEvento(),
+                datas,
                 evento.getLocalizacao(),
                 evento.getTipo(),
                 evento.getOrganizador().getNome(),

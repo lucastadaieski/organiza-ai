@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -24,8 +26,11 @@ public class Evento {
 
     private String descricao;
 
-    @Column(name ="data_evento")
-    private LocalDate dataEvento;
+    @Column(name = "data_escolhida")
+    private LocalDate dataEscolhida;
+
+    @OneToMany(mappedBy = "evento", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SugestaoData> opcoesData = new ArrayList<>();
 
     private String localizacao;
 
