@@ -4,10 +4,15 @@ import com.organizaai.enums.Role;
 import com.organizaai.dto.RegisterRequest;
 import com.organizaai.model.Usuario;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.organizaai.dto.LoginResponse;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -23,8 +28,9 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final MfaService mfaService;
     private final JwtService jwtService;
+    private final AuthenticationManager authenticationManager;
 
-    // --- 1. O NASCIMENTO (Seu método original que está ótimo) ---
+    // --- 1. O NASCIMENTO  ---
     public void registrar(RegisterRequest request) {
         Usuario novoUsuario = new Usuario();
         novoUsuario.setNome(request.nome());
@@ -34,6 +40,10 @@ public class AuthService {
         novoUsuario.setRole(Role.USER);
         novoUsuario.setAtivo(true);
 
+        novoUsuario.setConsentimentoAceito(request.consentimentoAceito());
+        novoUsuario.setConsentimentoData(LocalDateTime.now());
+        novoUsuario.setConsentimentoVersao("v1.0_2026");
+
         // Gera o segredo, mas deixa DESATIVADO até o primeiro login
         String secret = mfaService.gerarSecret();
         novoUsuario.setMfaSecret(secret);
@@ -42,29 +52,35 @@ public class AuthService {
         usuarioService.atualizarUsuario(novoUsuario);
     }
 
-    // --- 2. O PRIMEIRO PASSO DO LOGIN (Validação de Senha) ---
-    public Map<String, Object> autenticarSenha(String email, String senhaDigitada) {
-        Usuario user = usuarioService.buscarPorEmail(email)
+    // ...existing code...
+
+    // Nova API: centraliza a lógica de login com senha no Service
+    @Transactional
+    public LoginResponse loginComSenha(String email, String senha) {
+        Usuario usuario = usuarioService.buscarPorEmail(email)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
-        // Checa se a conta não está trancada por excesso de tentativas
-        if (user.getBloqueadoAte() != null && user.getBloqueadoAte().isAfter(LocalDateTime.now())) {
+        if (usuario.isBloqueado()) {
             throw new RuntimeException("Conta bloqueada temporariamente.");
         }
 
-        // BCrypt comparando a senha digitada com a do banco
-        if (!passwordEncoder.matches(senhaDigitada, user.getPassword())) {
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(email, senha)
+            );
+
+            // sucesso: reseta tentativas e retorna o próximo passo do fluxo MFA
+            resetarTentativas(usuario);
+
+            return new LoginResponse(usuario.isMfaEnabled() ? "MFA_VERIFY" : "MFA_SETUP",
+                    usuario.isMfaEnabled(),
+                    "Senha correta.");
+
+        } catch (BadCredentialsException e) {
+            // registra falha e propaga para ser tratado pelo controller/handler
             processarFalhaLogin(email);
-            throw new BadCredentialsException("Senha incorreta.");
+            throw e;
         }
-
-        resetarTentativas(user);
-
-        // Retornamos o status para o Front-end saber para onde mandar o usuário
-        return Map.of(
-                "mfaAtivo", user.isMfaEnabled(),
-                "status", user.isMfaEnabled() ? "MFA_VERIFY" : "MFA_SETUP"
-        );
     }
 
     // --- 3. A CHAVE FINAL (Validação do Código + Entrega do JWT) ---

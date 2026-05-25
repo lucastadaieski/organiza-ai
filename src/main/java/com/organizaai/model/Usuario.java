@@ -10,6 +10,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import com.organizaai.util.AesEncryptor;
 
 @Entity
 @Table(name = "usuarios")
@@ -37,12 +38,22 @@ public class Usuario implements UserDetails {
 
     private int tentativasLogin = 0;
     private LocalDateTime bloqueadoAte;
-
-
     private boolean mfaEnabled = false;
+
+    @Column(name = "mfa_secret")
+    @Convert(converter = AesEncryptor.class)
     private String mfaSecret;
 
     private boolean ativo = true;
+
+    @Column(name = "consentimento_aceito")
+    private Boolean consentimentoAceito;
+
+    @Column(name = "consentimento_data")
+    private LocalDateTime consentimentoData;
+
+    @Column(name = "consentimento_versao")
+    private String consentimentoVersao;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

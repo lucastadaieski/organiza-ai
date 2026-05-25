@@ -9,13 +9,21 @@ document.getElementById('form-registro').addEventListener('submit', async (e) =>
     const confirmarSenha = document.getElementById('confirmar-senha').value;
     const msgErro = document.getElementById('mensagem-erro');
 
+    // Captura o estado do checkbox de consentimento LGPD
+    const consentimento = document.getElementById('consentimento').checked;
+
     if (senha !== confirmarSenha) {
         msgErro.innerText = "As senhas não coincidem. Tente novamente.";
         msgErro.classList.remove('hidden');
         return;
     }
 
-// Se passou, segue com o fetch normal para o /auth/register...
+    // Validação extra de segurança (caso o usuário burle o HTML)
+    if (!consentimento) {
+        msgErro.innerText = "Você precisa aceitar os Termos de Uso e Política de Privacidade.";
+        msgErro.classList.remove('hidden');
+        return;
+    }
 
     try {
         // Chamada para o seu @RestController de autenticação
@@ -27,7 +35,9 @@ document.getElementById('form-registro').addEventListener('submit', async (e) =>
             body: JSON.stringify({
                 nome: nome,
                 email: email,
-                senha: senha
+                senha: senha,
+                // Envia a prova do consentimento para o Java salvar no banco (Itens 4.6 e 4.7)
+                consentimentoAceito: consentimento
             })
         });
 
@@ -37,8 +47,18 @@ document.getElementById('form-registro').addEventListener('submit', async (e) =>
             window.location.href = "/login";
         } else {
             // Se der erro (ex: e-mail já existe)
-            const data = await response.json();
-            msgErro.innerText = data.mensagem || "Erro ao registrar. Verifique os dados.";
+            // Tenta ler o JSON, mas se vier texto puro (Spring padrão), trata o erro
+            const contentType = response.headers.get("content-type");
+            let erroMsg = "Erro ao registrar. Verifique os dados.";
+
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                const data = await response.json();
+                erroMsg = data.mensagem || erroMsg;
+            } else {
+                erroMsg = await response.text() || erroMsg;
+            }
+
+            msgErro.innerText = erroMsg;
             msgErro.classList.remove('hidden');
         }
 

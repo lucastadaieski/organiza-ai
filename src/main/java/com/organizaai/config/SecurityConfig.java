@@ -17,10 +17,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    // O seu filtro JWT que já validamos e está perfeito
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    // 1. ÁREA VIP: Rotas públicas gerais (Login, Documentação, etc)
     private static final String[] ROTAS_PUBLICAS_GERAIS = {
             "/auth/**",
             "/auth/login",
@@ -29,10 +27,9 @@ public class SecurityConfig {
             "/auth/reset-password",
             "/v3/api-docs/**",
             "/swagger-ui/**",
-            "/error" // Libera a leitura de erros nativos
+            "/error"
     };
 
-    // 2. ÁREA VIP: Rotas do Front-end (HTML, CSS, JS)
     private static final String[] ROTAS_PUBLICAS_FRONTEND = {
             "/home",
             "/registrar",
@@ -55,22 +52,22 @@ public class SecurityConfig {
                 // Desliga a proteção CSRF, pois usamos tokens JWT (Stateless)
                 .csrf(AbstractHttpConfigurer::disable)
 
+                // ---------------------------------------------------------------------
+                // AUDITORIA: REQUISITO 3.1 e 3.2 - FORÇAR COMUNICAÇÃO SEGURA (TLS/HTTPS)
+                // Bloqueia qualquer tráfego HTTP em texto plano. O Spring Security
+                // abortará ou redirecionará a requisição para a porta segura (8443).
+                // ---------------------------------------------------------------------
+                .requiresChannel(channel -> channel.anyRequest().requiresSecure())
+
                 // Define que a API não guardará sessão no servidor
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 // Configuração das catracas de acesso
                 .authorizeHttpRequests(auth -> auth
-                        // Permite que o Spring redirecione erros internamente sem bloquear
                         .dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.FORWARD).permitAll()
-
-                        // Libera os blocos de rotas que definimos lá em cima
                         .requestMatchers(ROTAS_PUBLICAS_GERAIS).permitAll()
                         .requestMatchers(ROTAS_PUBLICAS_FRONTEND).permitAll()
-
-                        // Libera endpoints específicos via GET (como o link público do evento)
                         .requestMatchers(HttpMethod.GET, "/eventos/publico/**").permitAll()
-
-                        // A REGRA FINAL: Qualquer coisa que não estiver nas listas acima, exige Token
                         .anyRequest().authenticated()
                 )
 
